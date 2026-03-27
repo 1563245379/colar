@@ -9,6 +9,17 @@
 
 ![image](./assets/teaser.png)
 
+# Cite:
+If you think this work is helpful to you, please cite our paper in **arXiv version** (since the NeurIPS proceeding version was not correctly indexed by Google Scholar :(
+```
+@article{tan2025colar,
+  title={Think Silently, Think Fast: Dynamic Latent Compression of LLM Reasoning Chains},
+  author={Tan, Wenhui and Li, Jiaze and Ju, Jianzhong and Luo, Zhenbo and Luan, Jian and Song, Ruihua},
+  journal={arXiv preprint arXiv:2505.16552},
+  year={2025}
+}
+```
+
 # Abstract:
 Large Language Models (LLMs) achieve superior performance through Chain-of-Thought (CoT) reasoning, but these token-level reasoning chains are computationally expensive and inefficient. In this paper, we introduce Compressed Latent Reasoning (CoLaR), a novel framework that dynamically compresses reasoning processes in latent space through a two-stage training approach. First, during supervised fine-tuning, CoLaR extends beyond next-token prediction by incorporating an auxiliary next compressed embedding prediction objective. This process merges embeddings of consecutive tokens using a compression factor randomly sampled from a predefined range, and trains a specialized latent head to predict distributions of subsequent compressed embeddings. Second, we enhance CoLaR through reinforcement learning (RL) that leverages the latent head's non-deterministic nature to explore diverse reasoning paths and exploit more compact ones. This approach enables CoLaR to: i) perform reasoning at a dense latent level (i.e., silently), substantially reducing reasoning chain length, and ii) dynamically adjust reasoning speed at inference time by simply prompting the desired compression factor. Extensive experiments across four mathematical reasoning datasets demonstrate that CoLaR achieves 14.1% higher accuracy than latent-based baseline methods at comparable compression ratios, and reduces reasoning chain length by 53.3% with only 4.8% performance degradation compared to explicit CoT method. Moreover, when applied to more challenging mathematical reasoning tasks, our RL-enhanced CoLaR demonstrates performance gains of up to 5.4% while dramatically reducing latent reasoning chain length by 82.8%. The code and models will be released upon acceptance.
 
@@ -49,17 +60,6 @@ max_epochs=50
 ```
 python run.py \
 --test_ckpt_path=/path/to/trained/model.ckpt
-```
-
-# Cite:
-If you think this work is helpful to you, please cite our paper:
-```
-@article{tan2025colar,
-  title={Think Silently, Think Fast: Dynamic Latent Compression of LLM Reasoning Chains},
-  author={Tan, Wenhui and Li, Jiaze and Ju, Jianzhong and Luo, Zhenbo and Luan, Jian and Song, Ruihua},
-  journal={arXiv preprint arXiv:2505.16552},
-  year={2025}
-}
 ```
 
 # Something might help if you want to customize the project
