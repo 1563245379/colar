@@ -440,15 +440,28 @@ class LitCoLaR(LitCoTModelBase):
 
         all_position_ids = get_position_ids_from_attention_mask(all_attention_mask)
 
-        all_outputs = self.llm.forward(
-            inputs_embeds=all_inputs_embeds,
-            attention_mask=all_attention_mask,
-            position_ids=all_position_ids,
-            output_hidden_states=True,
-        )
+        # NOTE: We run the LLM forward under torch.no_grad() to avoid NaN in bfloat16
+        # hidden states. During RL training with gradient tracking enabled, the full
+        # forward pass over latent embeddings (which are out-of-distribution compared to
+        # token embeddings) can produce NaN in bfloat16 attention kernels (e.g., flash
+        # attention). The incremental forward in latent_generate() avoids this issue by
+        # processing one token at a time with past_key_values.
+        # Using no_grad here means the LLM (LoRA weights) is NOT updated by the GRPO
+        # loss — only the latent_policy receives gradients. This is intentional: RL
+        # fine-tunes the policy head while keeping the LLM feature extractor frozen.
+        with torch.no_grad():
+            all_outputs = self.llm.forward(
+                inputs_embeds=all_inputs_embeds,
+                attention_mask=all_attention_mask,
+                position_ids=all_position_ids,
+                output_hidden_states=True,
+            )
         last_hidden_states_for_latents = all_outputs.hidden_states[-1][
             :, question_length - 1 : question_length + latent_length - 1
         ]
+        # latent_policy.forward() still receives gradients through its own parameters
+        # (even though last_hidden_states_for_latents is detached), so the GRPO loss
+        # can update the latent policy.
         distributions = self.latent_policy.forward(last_hidden_states_for_latents)
         latent_logprobs = distributions.log_prob(e.latent_inputs_embeds / self.embeds_std).mean(dim=-1)
 
@@ -457,7 +470,9 @@ class LitCoLaR(LitCoTModelBase):
         for b, latent_length in enumerate(e.n_latent_forward):
             logits_for_eol.append(all_outputs.logits[b, question_length + latent_length - 1])
         logits_for_eol = torch.stack(logits_for_eol, dim=0)
-        # answer_logprobs
+        # answer_logprobs (detached since LLM forward is under no_grad;
+        # the answer loss term still contributes to total loss magnitude but
+        # does not produce gradients for the LLM)
         answer_logits = torch.cat([logits_for_eol, all_outputs.logits[:, -answer_length:-1, :]], dim=1)
         answer_logprobs = F.log_softmax(answer_logits, dim=-1)
         answer_logprobs = answer_logprobs.gather(dim=-1, index=e.answer_input_ids.unsqueeze(-1)).squeeze(-1)
