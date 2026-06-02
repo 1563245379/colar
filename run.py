@@ -159,6 +159,11 @@ def _preprocess_config(config, args, unknown_args):
 
 
 def preprocess_config_hook(config):
+    # Manual optimization (used by RL) is incompatible with Trainer-level
+    # gradient clipping and gradient accumulation. RL handles both itself.
+    if config.model.model_kwargs.get("do_rl", False):
+        config.trainer.gradient_clip_val = None
+        config.trainer.accumulate_grad_batches = 1
     return config
 
 

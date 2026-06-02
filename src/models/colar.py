@@ -319,7 +319,11 @@ class LitCoLaR(LitCoTModelBase):
             collate_fn=grpo.join_experience_batch,
         )
 
-        for experience in experience_dataloader:
+        accumulation_steps = rl_config.get("gradient_accumulation_steps", 1)
+        total_micro_batches = len(experience_dataloader)
+        optimizer.zero_grad()
+
+        for step_idx, experience in enumerate(experience_dataloader):
             experience: grpo.Experience = experience.to(self.device)
             latent_logprobs, answer_logprobs = self.get_logprobs(e=experience)
             loss_dict = self.grpo_loss(
@@ -327,14 +331,21 @@ class LitCoLaR(LitCoTModelBase):
                 answer_logprobs=answer_logprobs,
                 experience=experience,
             )
-            optimizer.zero_grad()
-            self.manual_backward(loss_dict["total_loss"])
-            grad_norm = clip_grad_norm_(self.parameters(), max_norm=1.0)
-            optimizer.step()
+            loss = loss_dict["total_loss"] / accumulation_steps
+            self.manual_backward(loss)
 
-            log_dict = {f"train/{k}": v for k, v in loss_dict.items()}
-            log_dict["train/grad_norm"] = grad_norm
-            self.log_dict(log_dict)
+            is_accumulation_boundary = (step_idx + 1) % accumulation_steps == 0
+            is_last_micro_batch = (step_idx + 1) == total_micro_batches
+            if is_accumulation_boundary or is_last_micro_batch:
+                grad_norm = clip_grad_norm_(
+                    self.parameters(), max_norm=rl_config.get("clip_grad_norm", 1.0)
+                )
+                optimizer.step()
+                optimizer.zero_grad()
+
+                log_dict = {f"train/{k}": v for k, v in loss_dict.items()}
+                log_dict["train/grad_norm"] = grad_norm
+                self.log_dict(log_dict)
 
     @torch.no_grad()
     def rollout(self, questions: List[str], gt_answers) -> grpo.Experience:
