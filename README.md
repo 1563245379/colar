@@ -46,6 +46,7 @@ python run.py \
 --dataset=qsa \
 --do_test \
 --load_ckpt_path=/path/to/pretrained/cot_model.ckpt \
+--accumulate_grad_batches=1 \
 --log_suffix=bs256_lr1e-4_and_so_on \
 dataset_name=gsm \
 model_id=Llama-3.2-1B-Instruct \
@@ -96,6 +97,12 @@ python run.py --model=colar --dataset=qsa model.model_kwargs.lora_config.lora_al
 ```
 
 run.py will search the key in across the config and set **every matching key** to the value.
+
+Gradient accumulation can also be passed as an explicit argument:
+```
+python run.py --model=colar --dataset=qsa --accumulate_grad_batches=4 batch_size=256
+```
+The configured `batch_size` is treated as the effective global batch size. `run.py` divides it by `num_devices * accumulate_grad_batches` to get the per-device micro-batch size.
 
 ## Logs and checkpoints
 

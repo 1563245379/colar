@@ -118,6 +118,11 @@ def _preprocess_config(config, args, unknown_args):
             devices = ",".join([str(i) for i in range(torch.cuda.device_count())])
         config.trainer.devices = [int(rank) for rank in devices.split(",")]
 
+    if args.accumulate_grad_batches is not None:
+        if args.accumulate_grad_batches < 1:
+            raise ValueError("--accumulate_grad_batches must be a positive integer")
+        config.trainer.accumulate_grad_batches = args.accumulate_grad_batches
+
     if is_test:
         return config
 
@@ -139,10 +144,24 @@ def _preprocess_config(config, args, unknown_args):
     # batch size for ddp
     total_bs = config.dataloader.batch_size
     num_devices = len(config.trainer.devices)
-    bs_per_device = total_bs // num_devices
-    real_bs = bs_per_device * num_devices
+    accumulate_grad_batches = config.trainer.get("accumulate_grad_batches", 1)
+    if accumulate_grad_batches < 1:
+        raise ValueError("trainer.accumulate_grad_batches must be a positive integer")
+    effective_batch_divisor = num_devices * accumulate_grad_batches
+    bs_per_device = total_bs // effective_batch_divisor
+    if bs_per_device < 1:
+        raise ValueError(
+            f"batch_size={total_bs} is too small for {num_devices} device(s) "
+            f"and accumulate_grad_batches={accumulate_grad_batches}"
+        )
+    real_bs = bs_per_device * effective_batch_divisor
     if real_bs != total_bs:
-        logger.warning(f"real batch size is {real_bs}")
+        logger.warning(f"real effective batch size is {real_bs}")
+    if accumulate_grad_batches != 1:
+        logger.info(
+            f"Using accumulate_grad_batches={accumulate_grad_batches}; "
+            f"per-device micro-batch size is {bs_per_device}"
+        )
     config.dataloader.batch_size = bs_per_device
 
     # epoch scaling
@@ -206,6 +225,15 @@ def get_args():
     parser.add_argument("--trainer", type=str, default="default")
 
     parser.add_argument("--devices", type=str, default="0")
+
+    parser.add_argument(
+        "--accumulate_grad_batches",
+        "--gradient_accumulation_steps",
+        dest="accumulate_grad_batches",
+        type=int,
+        default=None,
+        help="number of micro-batches to accumulate before each optimizer step",
+    )
 
     parser.add_argument("--no_log", help="disable training log", action="store_true")
 
