@@ -49,6 +49,7 @@ model:
       punish_latent_length: False
       clip_grad_norm: 1.0
       clip_eps: 0.2
+      max_log_ratio: 20.0
       use_latent_loss: True
       use_answer_loss: True
       n_train_samples_per_epoch: 512  # better divisible to total_batch_size
