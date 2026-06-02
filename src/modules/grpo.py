@@ -141,9 +141,15 @@ class GRPOLoss(nn.Module):
         self.use_latent_loss = rl_config.use_latent_loss
         self.use_answer_loss = rl_config.use_answer_loss
         self.average_per_token_loss = rl_config.get("average_per_token_loss", True)
+        self.max_log_ratio = rl_config.get("max_log_ratio", 20.0)
 
     def calculate_loss(self, logprobs, logprobs_old, attention_mask, advantages):
-        ratio = (logprobs - logprobs_old).exp()
+        log_ratio = (logprobs.float() - logprobs_old.float()).clamp(
+            min=-self.max_log_ratio,
+            max=self.max_log_ratio,
+        )
+        ratio = log_ratio.exp()
+        advantages = advantages.float()
         surr1 = ratio * advantages
         surr2 = ratio.clamp(1 - self.clip_eps, 1 + self.clip_eps) * advantages
         loss = -torch.min(surr1, surr2)
