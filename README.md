@@ -32,11 +32,11 @@ Large Language Models (LLMs) achieve superior performance through Chain-of-Thoug
 
 # Environment:
 ```
-conda create -n colar python=3.10
+conda create -n colar
 conda activate colar
 pip install -r requirements.txt
 ```
-If that does not work, just instiall the second latest version of pytorch and transformers, and I believe it will work:) (We recommend a numpy version < 2.0)
+Install a PyTorch build that matches your local hardware and driver setup.
 
 # Training:
 ```
