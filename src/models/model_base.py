@@ -30,8 +30,17 @@ class LitCoTModelBase(pl.LightningModule):
         llm_path = opj(all_config.args.workspace_path, "models", "llms", model_kwargs.model_id)
         ### IMPORTANT: replace the llm path to YOUR OWN llm path ###
 
+        # auto-detect: if local path exists, use it; otherwise treat model_id as HF Hub ID
+        import os
+        if os.path.isdir(llm_path):
+            model_source = llm_path
+            load_kwargs = {"local_files_only": True}
+        else:
+            model_source = model_kwargs.model_id
+            load_kwargs = {}
+
         # tokenizer
-        self.tokenizer: PreTrainedTokenizerBase = AutoTokenizer.from_pretrained(llm_path)
+        self.tokenizer: PreTrainedTokenizerBase = AutoTokenizer.from_pretrained(model_source, **load_kwargs)
         if model_kwargs.get("set_pad_as_last_token", False):  # we don't use this, but might help
             self.tokenizer.pad_token = "[PAD]"
             self.tokenizer.pad_token_id = len(self.tokenizer) - 1
@@ -63,7 +72,7 @@ Question: {} Let's think step by step:
         self.answer_template = "Answer:{}"
 
         # llm
-        self.llm: LlamaForCausalLM = AutoModelForCausalLM.from_pretrained(llm_path)
+        self.llm: LlamaForCausalLM = AutoModelForCausalLM.from_pretrained(model_source, **load_kwargs)
         if not model_kwargs.get("set_pad_as_last_token", False):  # not used, but might help
             self.llm.resize_token_embeddings(len(self.tokenizer))
         self.llm.generation_config.pad_token_id = self.tokenizer.pad_token_id
@@ -191,7 +200,7 @@ Question: {} Let's think step by step:
         base_template = getattr(self, f"{part}_template")
         text_list = [prefix[i] + base_template.format(text) + suffix[i] for i, text in enumerate(text_list)]
 
-        inputs = self.tokenizer.batch_encode_plus(
+        inputs = self.tokenizer(
             text_list, return_tensors="pt", add_special_tokens=False, padding="longest", padding_side=padding_side
         )
         input_ids = inputs["input_ids"].to(self.device)

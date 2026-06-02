@@ -28,7 +28,11 @@ class LitCoLaR(LitCoTModelBase):
             intermediate_size=latent_policy_config.get("lp_intermediate_size", self.llm.config.hidden_size),
             deterministic=latent_policy_config.get("lp_determinisitc", False),
         )
-        self.embeds_std = MODEL_EMB_STD[model_kwargs.model_id]
+        # try exact match first, then strip namespace prefix (e.g. "meta-llama/Llama-3.2-1B-Instruct" -> "Llama-3.2-1B-Instruct")
+        model_id = model_kwargs.model_id
+        if model_id not in MODEL_EMB_STD:
+            model_id = model_id.split("/")[-1]
+        self.embeds_std = MODEL_EMB_STD[model_id]
 
         if model_kwargs.do_rl:
             self.init_rl()

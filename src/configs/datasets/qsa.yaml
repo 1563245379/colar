@@ -1,7 +1,11 @@
 data_module:
   target: src.datasets.qsa.QSADataModule
-  
+
   # kwargs:
   dataset_name: gsm
   tiny_dataset: False
   epoch_scaling: 1
+
+  # Set to a HuggingFace dataset ID (e.g. "zen-E/GSM8k-Aug") to load from HF Hub
+  # instead of local JSON files. Leave null to use local files.
+  hf_dataset_id: null

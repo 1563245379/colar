@@ -30,7 +30,7 @@ model:
     latent_generation_config:
       max_n_latent_forward: 64
       latent_temperature: 1.0
-      compression_factor: 5
+      compression_factor: 2
     
     answer_generation_config:
       max_new_tokens: 16

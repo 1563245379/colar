@@ -14,7 +14,6 @@ import torch.distributed as dist
 from src.utils.utils import instantiate_from_config, get_timestamp, get_metric_statistics
 from src.utils.log import setup_logger 
 
-
 logger = setup_logger(__name__)
 start_time = get_timestamp()
 
@@ -26,7 +25,7 @@ def do_test(model: pl.LightningModule, trainer: pl.Trainer, ckpt_path: str, data
     elif ckpt_path == "last":
         state_dict = torch.load(trainer.checkpoint_callback.last_model_path, weights_only=False)["state_dict"]
     else:
-        state_dict = torch.load(ckpt_path)["state_dict"]
+        state_dict = torch.load(ckpt_path, weights_only=False)["state_dict"]
         logger.info(f"Loading ckpt from {ckpt_path}")
     logger.info(model.load_state_dict(state_dict=state_dict, strict=False))
     for i in range(args.test_times):
@@ -215,7 +214,7 @@ def get_args():
 
     parser.add_argument("--load_ckpt_path", type=str, help="load ckpt as initialization", default=None)
 
-    parser.add_argument("--workspace_path", type=str, help="assign the path of user workspace directory", default="/workspace/images-ks3-starfs/workspace/wenhui")
+    parser.add_argument("--workspace_path", type=str, help="assign the path of user workspace directory", default="/workspace/colar")
 
     parser.add_argument("--do_test", help="test after training", action="store_true")
 
@@ -234,6 +233,7 @@ def main():
 
     pl.seed_everything(args.seed)
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
+    os.environ["HF_HOME"] = "/workspace/cache"
 
     data_module: pl.LightningDataModule = instantiate_from_config(
         config.data_module, extra_kwargs={"all_config": config}
