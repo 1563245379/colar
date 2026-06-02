@@ -61,7 +61,7 @@ cat > "$SETTINGS_FILE" << EOF
   "model": "opus",
   "permissions": {
     "allow": [],
-    "defaultMode": "default"
+    "defaultMode": "auto"
   },
   "skipDangerousModePermissionPrompt": true,
   "theme": "auto"
