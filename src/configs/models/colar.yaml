@@ -31,11 +31,12 @@ model:
       max_n_latent_forward: 64
       latent_temperature: 1.0
       compression_factor: 2
+      eol_temperature: 1.0
     
     answer_generation_config:
       max_new_tokens: 16
       do_sample: True
-      top_p: 0.9
+      top_p: 0.95
       temperature: 1.0
 
     do_rl: False
@@ -53,6 +54,7 @@ model:
       use_latent_loss: True
       use_answer_loss: True
       n_train_samples_per_epoch: 512  # better divisible to total_batch_size
+      rl_limit_val_batches: 32  # reduce expensive generation validation during RL
 
   training_kwargs:
     optimizer:

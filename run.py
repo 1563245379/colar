@@ -164,6 +164,10 @@ def preprocess_config_hook(config):
     if config.model.model_kwargs.get("do_rl", False):
         config.trainer.gradient_clip_val = None
         config.trainer.accumulate_grad_batches = 1
+        rl_config = config.model.model_kwargs.get("rl_config", {})
+        rl_limit_val_batches = rl_config.get("rl_limit_val_batches", None)
+        if rl_limit_val_batches is not None and "limit_val_batches" not in config.trainer:
+            config.trainer.limit_val_batches = rl_limit_val_batches
     return config
 
 

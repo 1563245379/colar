@@ -80,5 +80,3 @@ echo ""
 echo "=== Installation Complete ==="
 echo "Settings written to: $SETTINGS_FILE"
 echo ""
-echo "Starting Claude Code:"
-IS_SANDBOX=1 claude --dangerously-skip-permissions
