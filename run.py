@@ -28,6 +28,7 @@ def do_test(model: pl.LightningModule, trainer: pl.Trainer, ckpt_path: str, data
         state_dict = torch.load(ckpt_path, weights_only=False)["state_dict"]
         logger.info(f"Loading ckpt from {ckpt_path}")
     logger.info(model.load_state_dict(state_dict=state_dict, strict=False))
+    model.num_rollouts = args.num_rollouts
     for i in range(args.test_times):
         pl.seed_everything(args.seed + i)
         res = trainer.test(model=model, datamodule=data_module)[0]
@@ -230,6 +231,8 @@ def get_args():
     parser.add_argument("--test_ckpt_path", default="")
 
     parser.add_argument("--test_times", type=int, default=5)
+
+    parser.add_argument("--num_rollouts", type=int, default=1, help="number of rollouts per question during testing (simulates GRPO rollout)")
 
     parser.add_argument("--seed", type=int, default=0)
 

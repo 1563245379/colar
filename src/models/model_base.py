@@ -467,49 +467,51 @@ Question: {} Let's think step by step:
         questions = batch["question"]
         answers = batch["answer"]
         steps = batch["steps"]
+        num_rollouts = getattr(self, 'num_rollouts', 1)
 
         # predict answers
-        if (sft_method := self.model_kwargs.sft_method.lower()) == "colar":
-            outputs_token_ids, n_latent_forward = self.latent_generate(questions=questions)
-        elif sft_method == "coconut" or sft_method == "distill":
-            outputs_token_ids, n_latent_forward = self.fixed_length_latent_generate(questions=questions)
-        elif sft_method == "cot" or sft_method == "icot":
-            outputs_token_ids, n_latent_forward = self.text_generate(questions=questions)
-        else:
-            raise NotImplementedError(f"Unknown sft_method: {sft_method}")
-
-        output_strings = self.tokenizer.batch_decode(outputs_token_ids, skip_special_tokens=True)
-
-        # metric and log
         all_acc = []
         all_output_length = []
         all_latent_forward = []
-        for i, q, s, a, o_ids, o_str, nlf in zip(
-            indices, questions, steps, answers, outputs_token_ids, output_strings, n_latent_forward
-        ):
-            if i not in self.sample_logs:
-                self.sample_logs[i]["question"] = q
-                self.sample_logs[i]["steps"] = s
-                self.sample_logs[i]["answer"] = a
+        for _ in range(num_rollouts):
+            if (sft_method := self.model_kwargs.sft_method.lower()) == "colar":
+                outputs_token_ids, n_latent_forward = self.latent_generate(questions=questions)
+            elif sft_method == "coconut" or sft_method == "distill":
+                outputs_token_ids, n_latent_forward = self.fixed_length_latent_generate(questions=questions)
+            elif sft_method == "cot" or sft_method == "icot":
+                outputs_token_ids, n_latent_forward = self.text_generate(questions=questions)
+            else:
+                raise NotImplementedError(f"Unknown sft_method: {sft_method}")
 
-                self.sample_logs[i]["pred_answer"] = []
-                self.sample_logs[i]["output_string"] = []
-                self.sample_logs[i]["output_length"] = []
-                self.sample_logs[i]["n_latent_forward"] = []
-                self.sample_logs[i]["acc"] = []
+            output_strings = self.tokenizer.batch_decode(outputs_token_ids, skip_special_tokens=True)
 
-            pred_a = self.extract_answer_from_output(o_str)
-            acc = self.verify_answer(gt_answer=a, pred_answer=pred_a)
-            o_length = (o_ids != self.tokenizer.pad_token_id).sum().item()
-            self.sample_logs[i]["pred_answer"].append(pred_a)
-            self.sample_logs[i]["output_string"].append(o_str)
-            self.sample_logs[i]["output_length"].append(o_length)
-            self.sample_logs[i]["n_latent_forward"].append(nlf.item())
-            self.sample_logs[i]["acc"].append(acc)
+            # metric and log
+            for i, q, s, a, o_ids, o_str, nlf in zip(
+                indices, questions, steps, answers, outputs_token_ids, output_strings, n_latent_forward
+            ):
+                if i not in self.sample_logs:
+                    self.sample_logs[i]["question"] = q
+                    self.sample_logs[i]["steps"] = s
+                    self.sample_logs[i]["answer"] = a
 
-            all_acc.append(acc)
-            all_output_length.append(o_length)
-            all_latent_forward.append(nlf.item())
+                    self.sample_logs[i]["pred_answer"] = []
+                    self.sample_logs[i]["output_string"] = []
+                    self.sample_logs[i]["output_length"] = []
+                    self.sample_logs[i]["n_latent_forward"] = []
+                    self.sample_logs[i]["acc"] = []
+
+                pred_a = self.extract_answer_from_output(o_str)
+                acc = self.verify_answer(gt_answer=a, pred_answer=pred_a)
+                o_length = (o_ids != self.tokenizer.pad_token_id).sum().item()
+                self.sample_logs[i]["pred_answer"].append(pred_a)
+                self.sample_logs[i]["output_string"].append(o_str)
+                self.sample_logs[i]["output_length"].append(o_length)
+                self.sample_logs[i]["n_latent_forward"].append(nlf.item())
+                self.sample_logs[i]["acc"].append(acc)
+
+                all_acc.append(acc)
+                all_output_length.append(o_length)
+                all_latent_forward.append(nlf.item())
 
         acc_count = sum(all_acc)
         acc_forward_count = sum([a * alf for a, alf in zip(all_acc, all_latent_forward)])
